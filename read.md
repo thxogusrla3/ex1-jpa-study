@@ -21,36 +21,108 @@
 - 객체와 관계형 데이터베이스 매핑하기
 - 영속성 컨텍스트
 
-## 영속성 컨텍스트란
+## 영속성 컨텍스트(Persistence Context)란
 - 엔티티를 영구 저장하는 환경
+- persist() 시점에는 영속성 컨텍스트에 저장하는 것이다.
 
-### 1차 캐시
+```
+EntityManager.persist(entity);
+```
+### 영속성 컨텍스트 이점
+1) 1차 캐시
+2) 동일성 보정
+3) 트랜잭션을 지원하는 쓰기 지연(버퍼링)
+4) 변경 감지(Dirty Checking)
+5) 지연 로딩(Lazy Loading)
+
+###  1) 1차 캐시
 - 영속성 컨텍스트 내부에 있는 첫 번째 캐시,
-- 조회 시 1차 캐시에 데이터가 이미 있는지 확인하고, 데이터가 있으면 가져온다.
+- 동일한 트랜잭션 내에서 조회 시 1차 캐시에 데이터가 이미 있는지 확인하고, 데이터가 있으면 가져온다.
 - 1차 캐시에 데이터가 없다면, 데이터베이스에 데이터를 요청한다.
 - 데이터베이스에서 받은 데이터를 다음에 재사용할 수 있도록 1차 캐시에 저장한다.
-```
-Member a = em.find(Member.class, 105L);
-Member a1 = em.find(Member.class, 105L);
-Member b = em.find(Member.class, 101L);
-Member b1 = em.find(Member.class, 101L);
 
-System.out.println("a.name = " + a.getName());
-System.out.println("b.name = " + b.getName());
-System.out.println("a1.name = " + a1.getName());
-System.out.println("b1.name = " + b1.getName());
+```
+  Member a = em.find(Member.class, 105L);
+  Member a1 = em.find(Member.class, 105L);
+  Member b = em.find(Member.class, 101L);
+  Member b1 = em.find(Member.class, 101L);
+  
+  System.out.println("a.name = " + a.getName());
+  System.out.println("b.name = " + b.getName());
+  System.out.println("a1.name = " + a1.getName());
+  System.out.println("b1.name = " + b1.getName());
 
 //a1, b1 은 앞서 실행된 a, b가 1차 캐시에 남아서 조회쿼리는 두 번만 실행된다.
 ```
+### 2) 동일성 보장
+- Java 컬렉션에서 값을 가져 올때 동일한 주소 값을 가져오듯이, 같은 reference를 불러오면 동일성을 보장해준다.
+```
+  Member a = em.find(Member.class, "member1");
+  Member b = em.find(Member.class, "member1");
+  System.out.println(a == b); //결과: true
+```
+
+### 3) 트랜잭션을 지원하는 쓰기 지연 SQL 저장소
+- commit() 하기 전 persist() 함수 후 실행될 쿼리들을 모아두는 곳
+- commit() 후 쓰기 지연 SQL 저장소에 모아둔 쿼리들을 모두 DB에 날린다.
+
+```
+  Member memberA = new Member(200L, "memberA");
+  Member memberB = new Member(205L, "memberB");
+
+  em.persist(memberA);
+  em.persist(memberB);
+  
+  commit();
+```
 
 ### 변경 감지(Dirty Checking)
-- commit() 후에 flush()가 실행되고, 1차 캐시에는 ID, Entity, SnapShot 이 생김
-- 그 후 엔티티와 스냅샷을 비교하고 쓰기지연SQL 저장소에 UPDATE 쿼리를 날림
-- 즉 객체를 변경하게 되면 자동으로 UPDATE 쿼리가 실행된다고 생각하면 됨.
+- 1차 캐시
+  - @Id, Entity, SnapShot (값을 읽어온 최초의 상태)
+  - SnapShot: 영속성 컨텍스트에 최초로 값이 들어왔을 때의 상태값을 저장함.
+- 변경 감지 매커니즘
+  - transaction.commt() 실행
+  - flush() 가 일어나며, Entity와 SnapShot을 일일이 비교한다.
+  - 변경사항이 있으면, UPDATE QUERY를 생성
+  - 해당 UPDATE QUERY를 쓰기 지연 SQL 저장소에 넣는다
+  - UPDATE Query를 DB에 반영 후 commt() 한다.
+
 ```
-Member updateMember = em.find(Member.class, 105);
-updateMember.setName("test");
-commit();
+  Member updateMember = em.find(Member.class, 105);
+  updateMember.setName("test");
+  commit();
 ```
+
 ### flush() 란?
-- 
+- 영속성 컨텍스트의 변경 내용을 DB에 반영하는 것.
+- transaction commit 이 일어날 때 ***flush*** 가 일어나는데, 이 때 쓰기 지연 저장소에 쌓아놨던 INSERT, UPDATE, DELETE SQL 들이 DB에 날아감.
+  - 영속성 컨텍스트를 비우는 것이 아님.
+- 호출 방법
+  - em.flush() 를 직접 호출
+  - transaction.commit() 호출
+  - JPQL 쿼리 작성 시 자동 호출
+
+## 준영속
+> 영속 상태의 엔티티를 영속성 컨텍스트에서 분리(detached)하는 것
+- em.detach(entity) //특정 엔티티만 준영속으로
+- em.clear() //영속성 컨텍스트를 완전히 초기화
+- em.close() //영속성 컨텍스트 종료
+
+## 엔티티 매핑
+### 1) 객체와 테이블 매핑
+- **@Entity**
+  - 엔티티라하며, JPA가 관리함.
+  - JPA를 사용해서 테이블과 매핑할 클래스는 @Entity 필수
+  - 기본 생성자 필수(파라미터가 없는 public or protected)
+  - final, enum, interface, inner Class 사용 X
+  - 속성: name
+- **@Table**
+  - 엔티티와 매핑할 테이블 지정
+  - 속성
+    - **name**: DB와 매핑할 테이블 이름, 기본값으로 entity 이름 사용
+    - **catalog**: DB catalog 매핑
+    - **schema**: DB schema 매핑
+    - **uniqueConstraints(DDL)**: DDL 생성 시에 유니크 제약 조건 생성
+
+2) 데이터베이스 스키마 자동 생성
+3) 
