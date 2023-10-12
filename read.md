@@ -125,4 +125,26 @@ EntityManager.persist(entity);
     - **uniqueConstraints(DDL)**: DDL 생성 시에 유니크 제약 조건 생성
 
 2) 데이터베이스 스키마 자동 생성
-3) 
+- persistence.xml에 코드 추가 
+  - \<property name="hibernate.hbm2ddl.auto" value="create" />
+- value 종류
+  - create: DROP + CREATE
+  - create-drop : create와 같으나 종료시점에 테이블 DROP
+  - update: 변경분만 반영
+  - validate: 엔티티와 테이블이 정상 매핑되었는지만 확인
+  - none: 사용하지 않음
+3) 필드 매핑 어노테이션 정리
+- @Column: 데이터베이스 컬럼 매핑
+  - 속성
+    - name: 필드와 매핑할 테이블의 컬럼 이름
+    - insertable, updatetable: 등록, 변경 가능 여부
+    - nullable(DDL): null 값의 허용 여부를 설정한다. false로 설정하면 DDL 생성 시에 not null 제약조건이 붙는다.
+    - unique(DDL): @Table의 uniqueConstraints와 같지만 한 컬럼에 간단히 유니크 제약조건을 걸 때 사용한다.
+    - columnDefinition(DDL): 데이터베이스 커럼 정보를 직접 줄 수 있다.
+    - length: 문자 길이 제약, String 에만 사용
+    - percision, scale(DDL): BigDecimal(BigInteger) 타입에서 사용, percision은 소수점을 포함한 전체 자릿수를, scale은 소수의 자릿수
+- @Temporal: 날짜 타입 매핑
+- @Enumerated: enum 타입 매핑
+- @Lob: BLOG, CLOB 매핑
+- @Transient: 특정 필드를 컬럼에 매핑하지 않음(매핑 무시)
+4) 
