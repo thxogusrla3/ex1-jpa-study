@@ -147,4 +147,68 @@ EntityManager.persist(entity);
 - @Enumerated: enum 타입 매핑
 - @Lob: BLOG, CLOB 매핑
 - @Transient: 특정 필드를 컬럼에 매핑하지 않음(매핑 무시)
-4) 
+
+## 기본 키 매핑
+> 기본키 매핑하는 방법은 2가지로 ***직접 할당*** 과 ***자동 생성***이 있다.
+```java
+import javax.persistence.GeneratedValue;
+
+class Member {
+    /*자동 생성*/
+    @Id //직접 할당
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /*자동 생성*/
+    private Long id;
+}
+```
+- 직접 할당: 기본키를 애플리케이션에서 직접 할당한다.
+```java
+class JpaMain {
+    Member member = new Member();
+    member.setId("1"); //애플리케이션에서 키 직접 할당
+}
+```
+- 자동 생성 전략: 대리키 사용 방식
+  - IDENTITY: 기본키 생성을 DB에 위임한다.
+  - SEQUENCE: DB 시퀀스를 사용해서 기본키를 할당한다. em.persist() 할 때 기본키 때문에 이 시점에 insert 쿼리를 보낸다.
+```java
+@Entity
+@SequenceGenerator(
+        name = "MEMBER_SEQ_GENERATOR",
+        sequenceName = "MEMBER_SEQ", //매핑할 DB 시퀀스 이름
+        initialValue = 1, allocationSize = 1
+) //MEMBER_SEQ_GENERATOR 시퀀스 생성기 등록
+public class Member {
+  @Id
+  @GeneratedValue( //Sequence 자동생성 전략을 타입으로 정함
+          strategy = GenerationType.SEQUENCE,
+          generator ="MEMBER_SEQ_GENERATOR"
+  )
+  private Long id;
+}
+/** 위 자바코드의 DDL
+ * CREATE SEQUENCE [sequenceName]
+ * start with [initailValue] increment by [allocationSize]
+ * */
+```
+    
+  - TABLE: 키 생성 테이블을 사용한다.
+
+```java
+@Entity
+@TableGenerator(
+        name = "MEMBER_SEQ_GENERATOR",
+        table = "MY_SEQUENCES", //매핑할 DB 시퀀스 이름
+        pkColumnValue = 1, allocationSize = 1
+) //MEMBER_SEQ_GENERATOR 시퀀스 생성기 등록
+public class Member {
+  @Id
+  @GeneratedValue( //Sequence 자동생성 전략을 타입으로 정함
+          strategy = GenerationType.TABLE,
+          generator = "MEMBER_SEQ_GENERATOR"
+  )
+  private Long id;
+}
+```
+  - AUTO: 선택한 DB에 따라 위 전략 IDENTITY, SEQUENCD, TABLE 중 하나를 자동으로 선택한다.(default)
+

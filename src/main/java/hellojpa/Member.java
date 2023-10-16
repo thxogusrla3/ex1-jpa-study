@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.Date;
 
 @Entity //JPA가 로딩될 때 인식함.
+@SequenceGenerator(name="member_seq_generator", sequenceName = "member_seq")
 public class Member {
 
     @Id
